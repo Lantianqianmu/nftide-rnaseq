@@ -14,11 +14,11 @@ star | 2.7.11a
 ### Usage ###
 
 ```
-nextflow rnaseq_pe.nf
-  --gtf gtffile
-  --genomeDir STARindexfolder
-  --input_csv samplesheet.csv
-  -with-report nf_rna_report.html
+nextflow rnaseq_pe.nf \
+  --gtf gtffile \
+  --genomeDir STARindexfolder \
+  --input_csv samplesheet.csv \
+  -with-report nf_rna_report.html \
   -with-timeline nf_rna_timeline.html
 ```
 
