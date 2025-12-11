@@ -1,7 +1,10 @@
 # nftide-rnaseq #
 Nextflow pipeline for RNA-seq.
 
-### Software dependencies ###
+## Introduction ##
+The pipeline uses cutadapt to remove nextera adaptors, aligns fastqs with STAR and quantifies with featureCounts.
+
+## Software dependencies ##
 Dependencies  | Version
 ------------- | -------------
 Perl | 5.32.1
@@ -10,11 +13,12 @@ cutadapt | 4.5
 pigz | 2.6
 samtools | 1.18
 star | 2.7.11a
+subread | 2.0.6
 
-### Usage ###
-
+## Usage ##
 ```
 nextflow rnaseq_pe.nf \
+  -output-dir outdir \
   --gtf gtffile \
   --genomeDir STARindexfolder \
   --input_csv samplesheet.csv \
@@ -24,5 +28,6 @@ nextflow rnaseq_pe.nf \
 
 where __samplesheet.csv__ must have 3 columns named "sample", "fastq_1" and "fastq_2".
 
-
-
+## Expected output ##
+The pipeline creates subfolders (named by samples in the samplesheet) in -output-dir. In each subfolders, there will be __cutadapt__ and __STAR__ folders.  
+The count matrix is outputed as __count_matrix.txt__ in -output-dir.
