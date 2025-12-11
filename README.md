@@ -29,5 +29,5 @@ nextflow rnaseq_pe.nf \
 where __samplesheet.csv__ must have 3 columns named "sample", "fastq_1" and "fastq_2".
 
 ## Expected output ##
-The pipeline creates subfolders (named by samples in the samplesheet) in -output-dir. In each subfolders, there will be __cutadapt__ and __STAR__ folders.  
+The pipeline creates subfolders (named by samples in the samplesheet) in -output-dir. In each subfolder, there will be a __cutadapt__ and a __STAR__ folder.  
 The count matrix is outputed as __count_matrix.txt__ in -output-dir.
