@@ -16,10 +16,14 @@ star | 2.7.11a
 subread | 2.0.6
 
 ## Usage ##
-(1) Create a conda environment with `conda create -n nftide-rnaseq nextflow=25.10.2 python cutadapt samtools star subread` and activate the environment with  
-`conda activate nftide-rnaseq`
+(1) Create a conda environment with 
+```
+conda create -n nftide-rnaseq nextflow=25.10.2 python cutadapt samtools star subread
+``` 
+and activate the environment with  
+```conda activate nftide-rnaseq```
 
-(2) Clone the repository with `git clone`.
+(2) Clone the repository with `git clone`, and execute `cd nftide-rnaseq`.
 
 (3) Run nextflow pipeline.
 ```
