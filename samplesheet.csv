@@ -1,0 +1,3 @@
+sample,fastq_1,fastq_2
+H-1,/home/zeemeeuw/data/nextflow/data/rnaseq/DS601_RNA/H-1/H-1_R1.fq.gz,/home/zeemeeuw/data/nextflow/data/rnaseq/DS601_RNA/H-1/H-1_R2.fq.gz
+H-2,/home/zeemeeuw/data/nextflow/data/rnaseq/DS601_RNA/H-2/H-2_R1.fq.gz,/home/zeemeeuw/data/nextflow/data/rnaseq/DS601_RNA/H-2/H-2_R2.fq.gz
