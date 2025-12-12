@@ -40,7 +40,10 @@ nextflow rnaseq_pe.nf \
   -with-report outdir/nf_rna_report.html \
   -with-timeline outdir/nf_rna_timeline.html
 ```
-where __samplesheet.csv__ must have 3 columns named "sample", "fastq_1" and "fastq_2".  
+__--samplesheet.csv__ must have 3 columns named "sample", "fastq_1" and "fastq_2". Refer to samplesheet.csv in the repository.  
+__--gtf__ is the gtf annotation file for STAR.  
+__--genomeDir__ is the STAR index folder.  
+__-output-dir__ is the output directory.   
 By default, the pipeline allows 2 samples to be processed in parallel. To change this behavior, modify _maxForks_ in __nextflow.config__.
 
 ## Expected output ##
