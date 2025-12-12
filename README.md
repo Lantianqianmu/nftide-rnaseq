@@ -25,9 +25,10 @@ and activate the environment with
 conda activate nftide-rnaseq
 ```
 
-(2) Clone the repository with `git clone`, and execute ```
+(2) Clone the repository with `git clone`, and execute
+```
 cd nftide-rnaseq
-```.
+```
 
 (3) Run nextflow pipeline.
 ```
