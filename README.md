@@ -21,9 +21,13 @@ subread | 2.0.6
 conda create -n nftide-rnaseq nextflow=25.10.2 python cutadapt samtools star subread
 ``` 
 and activate the environment with  
-```conda activate nftide-rnaseq```
+```
+conda activate nftide-rnaseq
+```
 
-(2) Clone the repository with `git clone`, and execute `cd nftide-rnaseq`.
+(2) Clone the repository with `git clone`, and execute ```
+cd nftide-rnaseq
+```.
 
 (3) Run nextflow pipeline.
 ```
