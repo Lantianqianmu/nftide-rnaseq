@@ -55,7 +55,7 @@ process STAR {
     val(id), emit: aligned_sample
     tuple val(id), path("*_aligned.bam"), emit: aligned_bam
     tuple val(id), path("*_aligned_filtered.bam"), emit: aligned_filtered_bam
-    path("*_aligned_filtered.bam"), emit: bams
+    // path("*_aligned_filtered.bam"), emit: bams
     tuple val(id), path("*_Log.final.out"), emit: aligned_log
 
     script:
@@ -86,23 +86,45 @@ process FEATURECOUNTS {
     // publishDir "${params.workingDir}", mode: 'copy', overwrite: true
 
     input:
-    path bams
+    val order
+    val bams
 
     output:
     path("count_matrix.txt"), emit: count_matrix
     path("featureCounts.log"), emit: featureCounts_log
 
     script:
+    def sorted_bams = bams.sort { bamTuple ->
+        order.indexOf(bamTuple[0])
+    }
+    
+    def bam_paths = sorted_bams.collect { item -> item[1] }
+    
+
+    def clean_paths = bam_paths
+        .collect { item -> item.toString() }
+        .collect { item -> item.replaceAll("[\\[\\]',]", "").trim() }
+        .findAll { item -> item }
+        .join(' ')
+
     """
+    BAM_ARRAY=()
+    for bam in ${clean_paths}; do
+
+        base_name=\$(basename "\$bam")
+        BAM_ARRAY+=("\$base_name")
+        ln -sf "\$bam" "\$base_name"
+    done
+
     featureCounts \
     -p \
     --primary \
     -T ${task.cpus} \
     -t gene -g gene_id \
     -a ${params.gtf} -o count_matrix.txt \
-    ${bams} > "featureCounts.log"
-    """
+    "\${BAM_ARRAY[@]}" 2> "featureCounts.log"
 
+    """
 }
 
 
@@ -113,6 +135,8 @@ workflow {
     read_pairs_ch = channel.fromPath(params.input_csv)
         .splitCsv(header:true)
         .map { row -> [row.sample, file(row.fastq_1, checkIfExists: true), file(row.fastq_2, checkIfExists: true)] }
+    sample_order = read_pairs_ch.map { sample, _f1, _f2 -> sample }.collect()
+    
 
     log.info """\
       nftide-rnaseq
@@ -125,9 +149,9 @@ workflow {
     """.stripIndent()
 
     CUTADAPT(read_pairs_ch)
-    // CUTADAPT.out.trimmed_reads.view()
     STAR(CUTADAPT.out.trimmed_reads)
-    FEATURECOUNTS(STAR.out.bams.collect())
+
+    FEATURECOUNTS(sample_order, STAR.out.aligned_filtered_bam.collect(flat: false))
 
     publish:
     cutadapt_fastqs = CUTADAPT.out.trimmed_reads
