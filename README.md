@@ -1,5 +1,5 @@
 # nftide-rnaseq #
-Nextflow pipeline for RNA-seq.
+Nextflow pipeline for pair-end RNA-seq.
 
 ## Introduction ##
 The pipeline uses cutadapt to remove nextera adaptors, aligns fastqs with STAR and quantifies with featureCounts.  
