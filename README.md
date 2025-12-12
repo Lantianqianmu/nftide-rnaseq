@@ -16,6 +16,12 @@ star | 2.7.11a
 subread | 2.0.6
 
 ## Usage ##
+(1) Create a conda environment with `conda create -n nftide-rnaseq nextflow=25.10.2 python cutadapt samtools star subread` and activate the environment with  
+`conda activate nftide-rnaseq`
+
+(2) Clone the repository with `git clone`.
+
+(3) Run nextflow pipeline.
 ```
 nextflow rnaseq_pe.nf \
   -output-dir outdir \
@@ -26,7 +32,7 @@ nextflow rnaseq_pe.nf \
   -with-timeline nf_rna_timeline.html
 ```
 where __samplesheet.csv__ must have 3 columns named "sample", "fastq_1" and "fastq_2".  
-By default, the pipeline allows 2 fastqs to be processed in parallel. To change this behavior, modify maxForks in __nextflow.config__.
+By default, the pipeline allows 2 samples to be processed in parallel. To change this behavior, modify maxForks in __nextflow.config__.
 
 ## Expected output ##
 The pipeline creates subfolders (named by samples in the samplesheet) in -output-dir. In each subfolder, there will be a __cutadapt__ and a __STAR__ folder.  
