@@ -25,8 +25,8 @@ nextflow rnaseq_pe.nf \
   -with-report nf_rna_report.html \
   -with-timeline nf_rna_timeline.html
 ```
-
-where __samplesheet.csv__ must have 3 columns named "sample", "fastq_1" and "fastq_2".
+where __samplesheet.csv__ must have 3 columns named "sample", "fastq_1" and "fastq_2".  
+By default, the pipeline allows 2 fastqs to be processed in parallel. To change this behavior, modify maxForks in __nextflow.config__.
 
 ## Expected output ##
 The pipeline creates subfolders (named by samples in the samplesheet) in -output-dir. In each subfolder, there will be a __cutadapt__ and a __STAR__ folder.  
