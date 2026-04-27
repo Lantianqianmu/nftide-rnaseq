@@ -4,11 +4,10 @@
 // nextflow rnaseq_pe.nf -with-report nf_rna_report.html -with-timeline nf_rna_timeline.html
 // mandatory field: genome, genomeBaseDir, input_csv, -output-dir
 
-params.genome = "hg38"
-params.genomeBaseDir = "/home/zeemeeuw/data/ref"
-params.gtf = "${params.genomeBaseDir}/${params.genome}/gencode.v39.primary_assembly.annotation.gtf"
-params.genomeDir = "${params.genomeBaseDir}/${params.genome}/${params.genome}-STAR/"
-params.input_csv = '/home/zeemeeuw/data/nextflow/data/rnaseq/DS601_RNA/samplesheet.csv'
+// nextflow run rnaseq_pe.nf -output-dir /data/xrz/charseq/rnaseq_nf_out -with-report nf_rna_report.html -with-timeline nf_rna_timeline.html 
+params.gtf = "/data/xrz/ref/hg38/gencode.v39.primary_assembly.annotation.gtf"
+params.genomeDir = "/data/xrz/ref/hg38/hg38-STAR/"
+params.input_csv = '/data/xrz/charseq/nftide-rnaseq/samplesheet.csv'
 
 
 // Channel
@@ -18,8 +17,9 @@ params.input_csv = '/home/zeemeeuw/data/nextflow/data/rnaseq/DS601_RNA/sampleshe
 
 // Create input channel from the contents of a CSV file
 
+
 process CUTADAPT {
-    tag "cutadapt on ${id}"
+    tag "cutadapt on ${id}..."
     // publishDir "${params.workingDir}/${id}/cutadapt", mode: 'copy', overwrite: false
 
     input:
@@ -45,7 +45,7 @@ process CUTADAPT {
 }
 
 process STAR {
-    tag "STAR on ${id}"
+    tag "STAR on ${id}..."
     // publishDir "${params.workingDir}/${id}/STAR", mode: 'copy', overwrite: false
 
     input:
@@ -82,7 +82,7 @@ process STAR {
 }
 
 process FEATURECOUNTS {
-    tag "featureCounts on all samples"
+    tag "featureCounts on all samples..."
     // publishDir "${params.workingDir}", mode: 'copy', overwrite: true
 
     input:
@@ -90,7 +90,7 @@ process FEATURECOUNTS {
     val bams
 
     output:
-    path("count_matrix.txt"), emit: count_matrix
+    path("featureCounts_matrix.txt"), emit: count_matrix
     path("featureCounts.log"), emit: featureCounts_log
 
     script:
@@ -121,8 +121,48 @@ process FEATURECOUNTS {
     --primary \
     -T ${task.cpus} \
     -t gene -g gene_id \
-    -a ${params.gtf} -o count_matrix.txt \
+    -a ${params.gtf} -o featureCounts_matrix.txt \
     "\${BAM_ARRAY[@]}" 2> "featureCounts.log"
+
+    """
+}
+
+process MAKEMATRIX {
+    tag "Making the final count matrix..."
+    // publishDir "${params.workingDir}", mode: 'copy', overwrite: true
+
+    input:
+    val count_mat
+
+    output:
+    path("count_matrix.txt"), emit: final_count_matrix
+
+    script:
+
+    """
+        cat ${count_mat} | perl -alne '
+            BEGIN{
+                \$, = "\t";
+                open IN, "<", shift;
+                while(<IN>){
+                    next if (/^#/);
+                    if(/gene_id "(.*?)"/){\$id = \$1;}
+                    if(/gene_type "(.*?)"/){\$type = \$1;}
+                    if(/gene_name "(.*?)"/){\$name = \$1;}
+                    \$gname{\$id} = \$name; \$gtype{\$id} = \$type; 
+                }
+                close IN;
+            }
+            next if (\$. == 1);
+            if (\$. == 2){
+                foreach my \$str (@F) {
+                    \$str =~ s/_aligned_filtered\\.bam//;
+                }
+                print "Genename", "Genetype", @F;
+            }else{
+                print(\$gname{\$F[0]}, \$gtype{\$F[0]}, @F);
+            }
+        ' ${params.gtf} > count_matrix.txt
 
     """
 }
@@ -131,7 +171,6 @@ process FEATURECOUNTS {
 
 workflow {
     main:
-
     read_pairs_ch = channel.fromPath(params.input_csv)
         .splitCsv(header:true)
         .map { row -> [row.sample, file(row.fastq_1, checkIfExists: true), file(row.fastq_2, checkIfExists: true)] }
@@ -141,7 +180,6 @@ workflow {
     log.info """\
       nftide-rnaseq
       ===================================
-      genome     : ${params.genome}
       gtf        : ${params.gtf}
       genomeDir  : ${params.genomeDir}
       projectDir : ${projectDir}
@@ -153,6 +191,8 @@ workflow {
 
     FEATURECOUNTS(sample_order, STAR.out.aligned_filtered_bam.collect(flat: false))
 
+    MAKEMATRIX(FEATURECOUNTS.out.count_matrix)
+
     publish:
     cutadapt_fastqs = CUTADAPT.out.trimmed_reads
     cutadapt_logs = CUTADAPT.out.cutadapt_log
@@ -161,6 +201,7 @@ workflow {
     star_qc = STAR.out.aligned_log
     featureCounts_logs = FEATURECOUNTS.out.featureCounts_log
     featureCounts_mat = FEATURECOUNTS.out.count_matrix
+    final_mat = MAKEMATRIX.out.final_count_matrix
 
 }
 
@@ -184,6 +225,8 @@ output {
     featureCounts_logs {
     }    
     featureCounts_mat {
+    }
+    final_mat {
     }
 }
 
