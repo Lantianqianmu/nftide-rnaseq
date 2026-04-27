@@ -33,13 +33,14 @@ cd nftide-rnaseq
 
 (3) Run nextflow pipeline.
 ```
-nextflow rnaseq_pe.nf \
+nextflow run rnaseq_pe.nf \
   -output-dir outdir \
   --gtf gtffile \
   --genomeDir STARindexfolder \
   --input_csv samplesheet.csv \
   -with-report outdir/nf_rna_report.html \
-  -with-timeline outdir/nf_rna_timeline.html
+  -with-timeline outdir/nf_rna_timeline.html \
+  -bg
 ```
 __--samplesheet.csv__ must have 3 columns named "sample", "fastq_1" and "fastq_2". Refer to samplesheet.csv in the repository.  
 __--gtf__ is the gtf annotation file for STAR.  
