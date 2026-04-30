@@ -1,13 +1,13 @@
 #!/home/zeemeeuw/miniconda3/envs/joint/bin/nextflow
 
 
-// nextflow rnaseq_pe.nf -with-report nf_rna_report.html -with-timeline nf_rna_timeline.html
+// nextflow run rnaseq_pe.nf -with-report nf_rna_report.html -with-timeline nf_rna_timeline.html -bg
 // mandatory field: genome, genomeBaseDir, input_csv, -output-dir
 
 // nextflow run rnaseq_pe.nf -output-dir /data/xrz/charseq/rnaseq_nf_out -with-report nf_rna_report.html -with-timeline nf_rna_timeline.html 
 params.gtf = "/data/xrz/ref/hg38/gencode.v39.primary_assembly.annotation.gtf"
 params.genomeDir = "/data/xrz/ref/hg38/hg38-STAR/"
-params.input_csv = '/data/xrz/charseq/nftide-rnaseq/samplesheet.csv'
+params.input_csv = '/data/xrz/WX_RNAseq/nftide-rnaseq/samplesheet.csv'
 
 
 // Channel
@@ -18,16 +18,34 @@ params.input_csv = '/data/xrz/charseq/nftide-rnaseq/samplesheet.csv'
 // Create input channel from the contents of a CSV file
 
 
+process MERGE_FQ {
+    tag "Merging fastq files of ${meta.id}..."
+    
+    input:
+    tuple val(meta), path(r1s) , path(r2s)
+    
+    output:
+    tuple val(meta), path("*_merged_R1.fq.gz"), path("*_merged_R2.fq.gz"), emit: merged_fq
+    
+    script:
+    """
+    cat ${r1s.join(' ')} > ${meta.id}_merged_R1.fq.gz
+    cat ${r2s.join(' ')} > ${meta.id}_merged_R2.fq.gz
+    """
+}
+
+
+
 process CUTADAPT {
-    tag "cutadapt on ${id}..."
+    tag "cutadapt on ${meta.id}..."
     // publishDir "${params.workingDir}/${id}/cutadapt", mode: 'copy', overwrite: false
 
     input:
-    tuple val(id), path(read1), path(read2)
+    tuple val(meta), path(read1), path(read2)
 
     output:
-    tuple val(id), path("*_cutadapt_R1.fq.gz"), path("*_cutadapt_R2.fq.gz"), emit: trimmed_reads
-    tuple val(id), path("*_cutadapt.log"), emit: cutadapt_log
+    tuple val(meta), path("*_cutadapt_R1.fq.gz"), path("*_cutadapt_R2.fq.gz"), emit: trimmed_reads
+    tuple val(meta), path("*_cutadapt.log"), emit: cutadapt_log
 
     script:
     """
@@ -36,27 +54,27 @@ process CUTADAPT {
         -a "CTGTCTCTTATACACATCT" \
         -A "CTGTCTCTTATACACATCT" \
         --pair-filter=any \
-        -o ${id}_cutadapt_R1.fq.gz \
-        -p ${id}_cutadapt_R2.fq.gz \
+        -o ${meta.id}_cutadapt_R1.fq.gz \
+        -p ${meta.id}_cutadapt_R2.fq.gz \
         ${read1} \
-        ${read2} > "${id}_cutadapt.log"
+        ${read2} > "${meta.id}_cutadapt.log"
 
     """
 }
 
 process STAR {
-    tag "STAR on ${id}..."
+    tag "STAR on ${meta.id}..."
     // publishDir "${params.workingDir}/${id}/STAR", mode: 'copy', overwrite: false
 
     input:
-    tuple val(id), path(read1), path(read2)
+    tuple val(meta), path(read1), path(read2)
 
     output:
-    val(id), emit: aligned_sample
-    tuple val(id), path("*_aligned.bam"), emit: aligned_bam
-    tuple val(id), path("*_aligned_filtered.bam"), emit: aligned_filtered_bam
+    val(meta), emit: aligned_sample
+    tuple val(meta), path("*_aligned.bam"), emit: aligned_bam
+    tuple val(meta), path("*_aligned_filtered.bam"), emit: aligned_filtered_bam
     // path("*_aligned_filtered.bam"), emit: bams
-    tuple val(id), path("*_Log.final.out"), emit: aligned_log
+    tuple val(meta), path("*_Log.final.out"), emit: aligned_log
 
     script:
     """
@@ -70,13 +88,13 @@ process STAR {
         --chimOutType WithinBAM \
         --readFilesIn ${read1} ${read2} \
         --genomeDir ${params.genomeDir} \
-        --outFileNamePrefix ${id}_ \
+        --outFileNamePrefix ${meta.id}_ \
         --outSAMtype BAM SortedByCoordinate \
         --outBAMsortingThreadN ${task.cpus} 
 
-    mv ${id}_Aligned.sortedByCoord.out.bam ${id}_aligned.bam
+    mv ${meta.id}_Aligned.sortedByCoord.out.bam ${meta.id}_aligned.bam
 
-    samtools view -@ ${task.cpus} -h -b -F 772 -q 30 ${id}_aligned.bam > ${id}_aligned_filtered.bam
+    samtools view -@ ${task.cpus} -h -b -F 772 -q 30 ${meta.id}_aligned.bam > ${meta.id}_aligned_filtered.bam
     """
 
 }
@@ -95,7 +113,7 @@ process FEATURECOUNTS {
 
     script:
     def sorted_bams = bams.sort { bamTuple ->
-        order.indexOf(bamTuple[0])
+        order.indexOf(bamTuple[0].id)
     }
     
     def bam_paths = sorted_bams.collect { item -> item[1] }
@@ -171,10 +189,47 @@ process MAKEMATRIX {
 
 workflow {
     main:
-    read_pairs_ch = channel.fromPath(params.input_csv)
-        .splitCsv(header:true)
-        .map { row -> [row.sample, file(row.fastq_1, checkIfExists: true), file(row.fastq_2, checkIfExists: true)] }
-    sample_order = read_pairs_ch.map { sample, _f1, _f2 -> sample }.collect()
+
+
+    ch_read_pairs = channel.fromPath(params.input_csv)
+    .splitCsv(header:true)
+    .map { row -> 
+        [
+            row.sample,
+            row
+        ]
+    }
+    .groupTuple()
+    .map { _sample, rows -> 
+        rows.withIndex().collect { row, index ->
+            row + [rep: index + 1]
+        }
+    }
+    .flatMap { item -> item }
+   .map { row -> 
+
+        [
+            [
+                id: row.sample,
+                rep: row.rep,
+
+            ], 
+            [
+                file(row.fastq_1, checkIfExists: true), 
+                file(row.fastq_2, checkIfExists: true)
+            ]
+        ]
+    }
+    .map{meta, files -> [meta.subMap(['id']), files]}
+    .groupTuple()
+    .map { meta, filePairs ->
+        [ meta, filePairs.collect { pair -> pair[0] }, filePairs.collect { pair -> pair[1] }]
+    }
+
+    // read_pairs_ch = channel.fromPath(params.input_csv)
+    //     .splitCsv(header:true)
+    //     .map { row -> [row.sample, file(row.fastq_1, checkIfExists: true), file(row.fastq_2, checkIfExists: true)] }
+    sample_order = ch_read_pairs.map { meta, _f1, _f2 -> meta.id }.collect().view()
     
 
     log.info """\
@@ -186,7 +241,8 @@ workflow {
       workingDir : ${workflow.outputDir}
     """.stripIndent()
 
-    CUTADAPT(read_pairs_ch)
+    MERGE_FQ(ch_read_pairs)
+    CUTADAPT(MERGE_FQ.out.merged_fq)
     STAR(CUTADAPT.out.trimmed_reads)
 
     FEATURECOUNTS(sample_order, STAR.out.aligned_filtered_bam.collect(flat: false))
@@ -194,6 +250,7 @@ workflow {
     MAKEMATRIX(FEATURECOUNTS.out.count_matrix)
 
     publish:
+    merged_fastqs = MERGE_FQ.out.merged_fq
     cutadapt_fastqs = CUTADAPT.out.trimmed_reads
     cutadapt_logs = CUTADAPT.out.cutadapt_log
     star_aligned_bams = STAR.out.aligned_bam
@@ -207,20 +264,23 @@ workflow {
 
 
 output {
+    merged_fastqs {
+        path { meta, _f1, _f2 -> "${meta.id}/fastqs" }
+    }
     cutadapt_fastqs {
-        path { sample, _f1, _f2 -> "${sample}/cutadapt" }
+        path { meta, _f1, _f2 -> "${meta.id}/fastqs" }
     }
     cutadapt_logs {
-        path { sample, _f1 -> "${sample}/cutadapt" }
+        path { meta, _f1 -> "${meta.id}/fastqs" }
     }
     star_aligned_bams {
-        path { sample, _f1 -> "${sample}/STAR" }
+        path { meta, _f1 -> "${meta.id}/STAR" }
     }
     star_aligned_filtered_bams {
-        path { sample, _f1 -> "${sample}/STAR" }
+        path { meta, _f1 -> "${meta.id}/STAR" }
     }
     star_qc {
-        path { sample, _f1 -> "${sample}/STAR" }
+        path { meta, _f1 -> "${meta.id}/STAR" }
     }
     featureCounts_logs {
     }    
@@ -229,5 +289,4 @@ output {
     final_mat {
     }
 }
-
 
