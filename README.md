@@ -42,7 +42,7 @@ nextflow run rnaseq_pe.nf \
   -with-timeline outdir/nf_rna_timeline.html \
   -bg
 ```
-__--samplesheet.csv__ must have 3 columns named "sample", "fastq_1" and "fastq_2". Refer to samplesheet.csv in the repository.  
+`samplesheet.csv`: must have 3 columns named "sample", "fastq_1" and "fastq_2". Refer to samplesheet.csv in the repository.  
 __--gtf__ is the gtf annotation file for STAR.  
 __--genomeDir__ is the STAR index folder.  
 __-output-dir__ is the output directory.   
